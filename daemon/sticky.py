@@ -13,7 +13,8 @@ from __future__ import annotations
 from typing import Callable
 
 from PySide6.QtCore import QEvent, QPointF, QRectF, QSize, Qt
-from PySide6.QtGui import QColor, QFont, QFontDatabase, QFontMetricsF, QPainter, QPainterPath, QPen
+from PySide6.QtGui import (QColor, QFont, QFontDatabase, QFontMetricsF, QLinearGradient, QPainter, QPainterPath,
+                           QPen)
 from PySide6.QtWidgets import QPlainTextEdit, QWidget
 
 import shapes as S
@@ -23,10 +24,12 @@ W = 248.0
 PAD = 14.0
 HEAD = 30.0
 MIN_BODY = 64.0
-GLASS = QColor(14, 16, 22, 236)
-GLASS_EDGE = QColor(255, 255, 255, 34)
+GLASS = QColor(12, 14, 22, 156)  # see-through, like the glass notes `show` draws
+GLASS_EDGE = QColor(255, 255, 255, 96)
+GLASS_SHEEN = QColor(255, 255, 255, 26)
+SHADOW = QColor(0, 0, 0, 170)
 INK = QColor(255, 255, 255)
-SOFT = QColor(255, 255, 255, 170)
+SOFT = QColor(255, 255, 255, 215)
 INK_FAMILIES = ["Ink Free", "Segoe Print", "Segoe UI"]
 
 
@@ -118,8 +121,14 @@ class Sticky(QWidget):
         p.setRenderHint(QPainter.TextAntialiasing)
         tint = accent(self.d["color"])
         card = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
-        p.setPen(QPen(GLASS_EDGE, 1))
+        p.setPen(QPen(GLASS_EDGE, 1.2))
         p.setBrush(GLASS)
+        p.drawRoundedRect(card, 12, 12)
+        sheen = QLinearGradient(card.topLeft(), card.bottomLeft())
+        sheen.setColorAt(0.0, GLASS_SHEEN)
+        sheen.setColorAt(0.45, QColor(255, 255, 255, 0))
+        p.setPen(Qt.NoPen)
+        p.setBrush(sheen)
         p.drawRoundedRect(card, 12, 12)
         p.setPen(Qt.NoPen)
         p.setBrush(tint)
@@ -135,7 +144,11 @@ class Sticky(QWidget):
         if self.editing and self.d.get("title"):
             title = "Editing: Ctrl+Enter saves"
         title = QFontMetricsF(p.font()).elidedText(title, Qt.ElideRight, W - PAD - 60)
-        p.drawText(QRectF(PAD, 0, W - PAD - 60, HEAD), Qt.AlignLeft | Qt.AlignVCenter, title)
+        head = QRectF(PAD, 0, W - PAD - 60, HEAD)
+        p.setPen(SHADOW)
+        p.drawText(head.translated(1, 1), Qt.AlignLeft | Qt.AlignVCenter, title)
+        p.setPen(SOFT)
+        p.drawText(head, Qt.AlignLeft | Qt.AlignVCenter, title)
 
         for key, r in self._buttons().items():
             if self.hover == key:
@@ -160,8 +173,10 @@ class Sticky(QWidget):
             p.drawPath(path)
 
         if not self.editing:
-            p.setPen(INK)
             p.setFont(_body_font())
+            p.setPen(SHADOW)
+            p.drawText(self._body().translated(1.2, 1.2), Qt.TextWordWrap | Qt.AlignLeft | Qt.AlignTop, self.d["text"])
+            p.setPen(INK)
             p.drawText(self._body(), Qt.TextWordWrap | Qt.AlignLeft | Qt.AlignTop, self.d["text"])
         p.end()
 

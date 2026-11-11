@@ -47,7 +47,7 @@ Other inspect modes: `screens` (monitors, scaling), `windows` (visible apps), `e
 | `arrow` | arrow to the target; the tail is placed automatically, or set `from`. Add `text` for a caption at the tail. |
 | `label` | caption pill next to a target or at a point. |
 | `pointer` | a drawn pointer glides to the target and pulses. `text` appears when it lands. One at a time. |
-| `note` | handwritten note on dark glass that writes itself on. `text` up to 800 chars, optional `title`, lines starting `- ` become bullets. |
+| `note` | handwritten note on see-through glass that writes itself on. `text` up to 800 chars, optional `title`, lines starting `- ` become bullets. |
 | `ink` | hand-drawn `mark` on a target: `circle`, `underline`, `box`, `arrow`, `check`, `cross`. |
 | `flow` | small hand-drawn diagram: 2-6 `nodes` joined by arrows, `direction` right or down. |
 

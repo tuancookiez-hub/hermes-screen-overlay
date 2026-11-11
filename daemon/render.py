@@ -12,6 +12,7 @@ from typing import Any
 
 from PySide6.QtCore import QPointF, QRectF, Qt, QTimer, QVariantAnimation
 from PySide6.QtGui import QColor, QFont, QFontMetricsF, QGuiApplication, QPainter, QPainterPath, QPen, QPolygonF
+from PySide6.QtGui import QLinearGradient
 from PySide6.QtWidgets import QWidget
 
 import shapes as S
@@ -26,8 +27,10 @@ DIM = QColor(0, 0, 0, 140)
 HALO = QColor(0, 0, 0, 150)
 PILL_BG = QColor(22, 22, 26, 240)
 TEXT = QColor(255, 255, 255)
-GLASS = QColor(14, 16, 22, 232)
-GLASS_EDGE = QColor(255, 255, 255, 30)
+GLASS = QColor(12, 14, 22, 156)  # see-through: what is under a note stays visible
+GLASS_EDGE = QColor(255, 255, 255, 96)
+GLASS_SHEEN = QColor(255, 255, 255, 26)
+INK_SHADOW = QColor(0, 0, 0, 170)  # keeps handwriting readable on glass over a bright page
 INK_FAMILIES = ["Ink Free", "Segoe Print", "Segoe UI"]  # the first two ship with Windows
 POINTER_SHAPE = ((0, 0), (0, 33), (8.2, 25.7), (13.6, 38), (19.1, 35.6), (13.8, 23.5), (24.2, 23.5))
 RIPPLE_S = 0.9
@@ -385,10 +388,17 @@ class Layer(QWidget):
             return
         if e["plate"]:
             p.setOpacity(fade * min(1.0, prog * e["dur"] / 0.16))
-            p.setPen(QPen(GLASS_EDGE, self.L(1)))
+            p.setPen(QPen(GLASS_EDGE, self.L(1.2)))
             p.setBrush(GLASS)
             rad = self.L(14 * e["s"])
-            p.drawRoundedRect(self.R(e["rect"]), rad, rad)
+            plate = self.R(e["rect"])
+            p.drawRoundedRect(plate, rad, rad)
+            sheen = QLinearGradient(plate.topLeft(), plate.bottomLeft())
+            sheen.setColorAt(0.0, GLASS_SHEEN)
+            sheen.setColorAt(0.45, QColor(255, 255, 255, 0))
+            p.setPen(Qt.NoPen)
+            p.setBrush(sheen)
+            p.drawRoundedRect(plate, rad, rad)
             p.setOpacity(fade)
         left = prog * e["dur"]
         for part in e["parts"]:
@@ -418,9 +428,14 @@ class Layer(QWidget):
         r = self.R((part["x"], part["y"], part["w"], part["h"]))
         p.save()
         p.setClipRect(QRectF(r.x() - self.L(4), r.y() - self.L(4), (r.width() + self.L(8)) * f, r.height() + self.L(8)))
-        p.setPen(QColor(e["color"]))
         p.setFont(_ink_font(part["px"] / self.dpr, part["bold"]))
-        p.drawText(r.adjusted(0, 0, self.L(200), 0), Qt.AlignLeft | Qt.AlignVCenter | Qt.TextDontClip, part["text"])
+        box = r.adjusted(0, 0, self.L(200), 0)
+        if e["plate"]:
+            d = self.L(1.2)
+            p.setPen(INK_SHADOW)
+            p.drawText(box.translated(d, d), Qt.AlignLeft | Qt.AlignVCenter | Qt.TextDontClip, part["text"])
+        p.setPen(QColor(e["color"]))
+        p.drawText(box, Qt.AlignLeft | Qt.AlignVCenter | Qt.TextDontClip, part["text"])
         p.restore()
 
     def _pointer(self, p: QPainter, ptr: dict) -> None:

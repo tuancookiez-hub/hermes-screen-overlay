@@ -16,7 +16,8 @@ clicking.
   each step, the mark follows its window if it moves, and a step can wait for something that isn't on
   screen yet. Guides can be saved and replayed without asking the model again.
 - **Glass notes.** Handwritten notes, circles, underlines, arrows and small flow diagrams write
-  themselves on top of whatever you're doing, and you can click straight through them.
+  themselves on top of whatever you're doing. The glass is see-through, so your work stays visible
+  behind a note, and you can click straight through them.
 - **Notes you can keep.** A glass note can also stay: drag it anywhere, double-click to edit, close
   it with the ×. Hermes can read back what you wrote, so a note works as a small shared scratchpad.
   The tool calls these `sticky`; they stay until you close them.
