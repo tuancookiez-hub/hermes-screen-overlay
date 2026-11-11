@@ -125,7 +125,7 @@ def test_stroke_point_count_is_bounded():
 def test_sticky_notes_are_validated():
     out = S.normalize_stickies([{"text": "  buy milk  "}, {"text": "x", "title": "T", "color": "blue", "id": "a",
                                                            "target": {"point": [5, 6]}}])
-    assert out[0] == {"id": "sticky1", "text": "buy milk", "title": "", "color": S.PALETTE["yellow"], "target": None}
+    assert out[0] == {"id": "sticky1", "text": "buy milk", "title": "", "color": S.PALETTE["white"], "target": None}
     assert out[1]["id"] == "a" and out[1]["color"] == S.PALETTE["blue"] and out[1]["target"] == {"point": [5.0, 6.0]}
     assert len(S.normalize_stickies([{"text": "y" * 5000}])[0]["text"]) == S.MAX_STICKY_TEXT
     for bad in (None, [], "x", [1], [{}], [{"text": "   "}], [{"text": 5}], [{"text": "a", "title": 3}],

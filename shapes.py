@@ -28,7 +28,7 @@ MAX_STEP_TITLE = 80
 MAX_STEP_TEXT = 300
 MAX_STICKIES = 12
 MAX_STICKY_TEXT = 400
-STICKY_COLOR = "yellow"
+STICKY_COLOR = "white"
 PALETTE = {
     "orange": "#FF9F0A",
     "blue": "#0A84FF",

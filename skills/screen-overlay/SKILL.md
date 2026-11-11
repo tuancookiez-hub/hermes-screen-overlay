@@ -1,6 +1,6 @@
 ---
 name: screen-overlay
-description: Point at things on the user's real Windows screen with the screen_overlay tool — a gliding pointer, spotlights, boxes, arrows, numbered steps, a floating step guide, handwritten glass notes, and sticky notes the user can drag and edit.
+description: Point at things on the user's real Windows screen with the screen_overlay tool — a gliding pointer, spotlights, boxes, arrows, numbered steps, a floating step guide, and handwritten glass notes, including ones that stay for the user to drag and edit.
 ---
 
 # Pointing at the user's screen
@@ -116,9 +116,9 @@ to each step, and the panel moves out of the way. Use it for three or more steps
 - Starting a guide replaces any running guide. `clear` ends it too.
 - It ends after 30 minutes with no Next or Back, or after `ttl_seconds`.
 
-## Sticky notes
+## Notes that stay (`sticky`)
 
-A sticky is a small paper note that belongs to the user once you leave it. They can drag it, double-click to edit
+A sticky is a glass note that stays and belongs to the user once you leave it. They can drag it, double-click to edit
 it, and close it. It has no timer and survives `clear`.
 
 ```json
@@ -129,14 +129,14 @@ it, and close it. It has no timer and survives `clear`.
 ]}
 ```
 
-- A `target` puts the note beside that thing; without one it takes a free corner. Colours tint the paper.
+- A `target` puts the note beside that thing; without one it takes a free corner. `color` sets its accent.
 - `{"action": "stickies"}` returns each note's current `text` and `edited_by_user`. Read it before you rewrite a
   note, and when the user says "I wrote it on the note".
 - Sending a note with an existing `id` rewrites it in place and keeps where the user dragged it. Do not overwrite a
   note whose `edited_by_user` is true unless they asked.
 - Remove notes with `{"action": "clear", "ids": ["todo"]}` or all of them with `{"action": "clear", "stickies": true}`.
   A plain `clear` leaves them alone. At most 12 notes, 400 characters each.
-- Use `note` (glass) for an explanation that should fade; use `sticky` for something the user will keep or change.
+- Use `note` for an explanation that should fade with the other marks; use `sticky` for something the user will keep or change. They look alike on purpose.
 
 ## Read the result
 

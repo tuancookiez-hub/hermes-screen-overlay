@@ -17,16 +17,16 @@ clicking.
   screen yet. Guides can be saved and replayed without asking the model again.
 - **Glass notes.** Handwritten notes, circles, underlines, arrows and small flow diagrams write
   themselves on top of whatever you're doing, and you can click straight through them.
-- **Sticky notes.** Paper notes Hermes leaves on your screen that are yours to keep: drag them
-  anywhere, double-click to edit, close them with the ×. Hermes can read back what you wrote, so a
-  note works as a small shared scratchpad. They stay until you close them.
+- **Notes you can keep.** A glass note can also stay: drag it anywhere, double-click to edit, close
+  it with the ×. Hermes can read back what you wrote, so a note works as a small shared scratchpad.
+  The tool calls these `sticky`; they stay until you close them.
 - **Pinned to real UI elements.** Targets are resolved through Windows UI Automation. In testing, the
   element bounds matched the true on-screen pixels exactly.
 - **DPI- and multi-monitor-aware.** There is one overlay window per monitor, and drawing happens in
   physical pixels before conversion to each monitor's scale.
 - **Never takes focus.** Marks are click-through. The guide panel and sticky notes take clicks, and
   Windows is told not to activate them, so you keep typing where you were. The one exception is a
-  sticky note you choose to edit: it takes the keyboard until you press Esc or Ctrl+Enter or click
+  note you choose to edit: it takes the keyboard until you press Esc or Ctrl+Enter or click
   away, then hands it back to the app you were in. The overlay only covers
   monitors that have marks on them, and the pointer never crosses onto another monitor.
 - **Emergency clear: `Ctrl+Alt+Shift+F12`.** Wipes every mark and stops the overlay process. A small
@@ -44,13 +44,20 @@ Over real VS Code, on a project whose deploy really failed:
 | | |
 |---|---|
 | ![A spotlight and pointer on the failing line in the VS Code terminal](docs/images/real-pointer.png) | ![Step 2 of a guide marking a line in the .env file, with the step card](docs/images/real-guide.png) |
-| ![An ink circle, a glass note, an arrow to the file tree and a flow diagram over the editor](docs/images/real-notes.png) | ![A yellow sticky note the user dragged and added a third line to](docs/images/real-sticky.png) |
+| ![An ink circle, a glass note, an arrow to the file tree and a flow diagram over the editor](docs/images/real-notes.png) | ![A glass note the user dragged and added a third line to](docs/images/real-sticky.png) |
 
-These are the plugin's own overlay windows and UI Automation lookups running against real VS Code.
-They were captured on a private Windows desktop, with VS Code's window and the overlay's windows
+It is not only for code. A PDF in Chrome, a poster in PowerPoint, a photo in Paint:
+
+| | | |
+|---|---|---|
+| ![An equation circled in a PDF with a glass note explaining it](docs/images/real-study.png) | ![A poster in PowerPoint with the overlapping subtitle circled and a pointer on the Arrange menu](docs/images/real-design.png) | ![A crop frame drawn on a photo in Paint with a pointer on the Crop button](docs/images/real-photo.png) |
+
+These are the plugin's own overlay windows and UI Automation lookups running against real apps (VS Code, Chrome, PowerPoint, Paint).
+They were captured on a private Windows desktop, with the app's window and the overlay's windows
 combined frame by frame, because the live overlay is kept out of normal screenshots by default
-(`exclude_from_capture`). The `.env` item, the file tab and the Terminal menu were found by name
-through UI Automation; the code and terminal lines were given as rectangles.
+(`exclude_from_capture`). The `.env` item, the Terminal menu, PowerPoint's Arrange menu and Paint's
+Crop button were found by name through UI Automation; lines of text and regions of a page or photo
+were given as rectangles.
 
 Drawn over a staged Settings window by the same drawing code:
 
@@ -88,7 +95,7 @@ checkout into `%LOCALAPPDATA%\hermes\plugins\screen-overlay` and run
 | `show` | draws `pointer`, `step`, `spotlight`, `box`, `arrow`, `label`, `note`, `ink` and `flow` on `element`, `window`, `rect` or `point` targets. `note` and `flow` can find their own clear spot. Screenshot coordinates are rescaled when `space` is given. |
 | `guide` | starts a step guide from `steps`, or replays a saved one with `guide_name`. `save_as` keeps it. |
 | `guide_move` | `next`, `back` or a step number |
-| `sticky` | leaves paper `notes` (text, optional title, colour and target) that the user can drag and edit. Reusing an id rewrites that note where it is. Up to 12 at once. |
+| `sticky` | leaves glass `notes` that stay (text, optional title, colour and target) and that the user can drag and edit. Reusing an id rewrites that note where it is. Up to 12 at once. |
 | `stickies` | lists the notes on screen: current text, whether the user edited or moved each, and where it is |
 | `guides` | lists saved guides, or removes one with `delete` |
 | `clear` | removes all marks and any guide, or only some marks by `id` |

@@ -44,8 +44,8 @@ SCHEMA: dict[str, Any] = {
         "Draw on the user's real Windows screen to show them where to look or click, and teach with it: "
         "spotlight, box, arrow, label, numbered step, a drawn pointer that glides to a target, handwritten "
         "glass notes, ink marks and small flow diagrams. A guide is a floating panel that walks the user "
-        "through steps with Next and Back. A sticky is a paper note the user can drag and edit (double-click) "
-        "and that stays until closed; read their edits back with `stickies`. Marks are click-through and "
+        "through steps with Next and Back. A sticky is a glass note that stays: the user can drag it and edit it "
+        "(double-click), and it lasts until closed; read their edits back with `stickies`. Marks are click-through and "
         "nothing takes keyboard focus unless the user chooses to edit a sticky; marks clear after "
         "ttl_seconds, and the user can clear everything with Ctrl+Alt+Shift+F12. "
         "Prefer element targets (UI Automation, pixel-exact, survives DPI scaling) over coordinates: call "
@@ -97,15 +97,15 @@ SCHEMA: dict[str, Any] = {
             },
             "notes": {
                 "type": "array",
-                "description": ("sticky: paper notes to leave on screen (max 12). The user can drag them and "
+                "description": ("sticky: glass notes that stay on screen (max 12). The user can drag them and "
                                 "double-click to edit. Reusing an id rewrites that note in place."),
                 "items": {
                     "type": "object",
                     "properties": {
                         "text": {"type": "string", "description": "The note, up to 400 chars"},
                         "title": {"type": "string", "description": "Short heading on the note's top strip"},
-                        "color": {"type": "string", "description": f"Paper tint: {', '.join(PALETTE)} or #RRGGBB "
-                                                                   "(default yellow)"},
+                        "color": {"type": "string", "description": f"Accent colour: {', '.join(PALETTE)} or #RRGGBB "
+                                                                   "(default white)"},
                         "target": TARGET,
                         "id": {"type": "string", "description": "Name it to rewrite or clear it later"},
                     },

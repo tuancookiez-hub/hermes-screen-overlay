@@ -1,4 +1,7 @@
-"""Sticky notes: small paper notes Hermes leaves on screen, that the user can drag and edit.
+"""Pinned glass notes: handwritten notes on dark glass that stay, and that the user can drag and edit.
+
+They look like the glass notes `show` draws, but each is its own small window (the tool calls them
+"sticky").
 
 A sticky takes mouse clicks without activating, like the step guide, so dragging one never steals
 focus. Editing is the one exception in the whole overlay: a double-click (or the pencil) lets the
@@ -20,7 +23,10 @@ W = 248.0
 PAD = 14.0
 HEAD = 30.0
 MIN_BODY = 64.0
-INK = QColor("#1D1D22")
+GLASS = QColor(14, 16, 22, 236)
+GLASS_EDGE = QColor(255, 255, 255, 34)
+INK = QColor(255, 255, 255)
+SOFT = QColor(255, 255, 255, 170)
 INK_FAMILIES = ["Ink Free", "Segoe Print", "Segoe UI"]
 
 
@@ -38,12 +44,11 @@ def _ui_font(px: float, weight=QFont.DemiBold) -> QFont:
     return f
 
 
-def paper(color: str) -> QColor:
-    """The note's paper: the mark colour, washed out so dark handwriting reads on it."""
+def accent(color: str) -> QColor:
+    """The note's accent, lifted if it is too dark to read on the glass."""
     c = QColor(color)
-    k = 0.62
-    return QColor(round(c.red() + (255 - c.red()) * k), round(c.green() + (255 - c.green()) * k),
-                  round(c.blue() + (255 - c.blue()) * k))
+    lum = 0.2126 * c.redF() + 0.7152 * c.greenF() + 0.0722 * c.blueF()
+    return c.lighter(170) if lum < 0.35 else c
 
 
 class Sticky(QWidget):
@@ -53,7 +58,7 @@ class Sticky(QWidget):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_ShowWithoutActivating)
         self.setMouseTracking(True)
-        self.setWindowTitle("Hermes Sticky Note")
+        self.setWindowTitle("Hermes Note")
         self.d = dict(data)
         self.on_change, self.on_close = on_change, on_close
         self.hover: str | None = None
@@ -68,8 +73,8 @@ class Sticky(QWidget):
         self.editor.setFont(_body_font())
         self.editor.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.editor.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.editor.setStyleSheet("QPlainTextEdit { background: transparent; color: #1D1D22; "
-                                  "selection-background-color: rgba(0,0,0,60); selection-color: #1D1D22; }")
+        self.editor.setStyleSheet("QPlainTextEdit { background: transparent; color: #FFFFFF; "
+                                  "selection-background-color: rgba(255,255,255,70); selection-color: #FFFFFF; }")
         self.editor.document().setDocumentMargin(0)
         self.editor.hide()
         self.editor.installEventFilter(self)
@@ -111,23 +116,20 @@ class Sticky(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
         p.setRenderHint(QPainter.TextAntialiasing)
-        base = paper(self.d["color"])
+        tint = accent(self.d["color"])
         card = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
-        p.setPen(QPen(QColor(0, 0, 0, 70), 1))
-        p.setBrush(base)
-        p.drawRoundedRect(card, 5, 5)
-        head = QPainterPath()
-        head.addRoundedRect(QRectF(0.5, 0.5, W - 1, HEAD), 5, 5)
+        p.setPen(QPen(GLASS_EDGE, 1))
+        p.setBrush(GLASS)
+        p.drawRoundedRect(card, 12, 12)
         p.setPen(Qt.NoPen)
-        p.setBrush(base.darker(109))
-        p.drawPath(head)
-        p.fillRect(QRectF(1, HEAD - 6, W - 2, 6.5), base.darker(109))
+        p.setBrush(tint)
+        p.drawRoundedRect(QRectF(PAD, HEAD + 1, 34, 3), 1.5, 1.5)  # a short accent rule under the heading
         if self.editing:
-            p.setPen(QPen(QColor(self.d["color"]).darker(120), 2))
+            p.setPen(QPen(tint, 2))
             p.setBrush(Qt.NoBrush)
-            p.drawRoundedRect(card.adjusted(0.5, 0.5, -0.5, -0.5), 5, 5)
+            p.drawRoundedRect(card.adjusted(0.5, 0.5, -0.5, -0.5), 12, 12)
 
-        p.setPen(QColor(0, 0, 0, 170))
+        p.setPen(SOFT)
         p.setFont(_ui_font(12))
         title = self.d.get("title") or ("Editing: Esc cancels, Ctrl+Enter saves" if self.editing else "Note")
         if self.editing and self.d.get("title"):
@@ -138,10 +140,10 @@ class Sticky(QWidget):
         for key, r in self._buttons().items():
             if self.hover == key:
                 p.setPen(Qt.NoPen)
-                p.setBrush(QColor(0, 0, 0, 38))
-                p.drawRoundedRect(r, 5, 5)
+                p.setBrush(QColor(255, 255, 255, 44))
+                p.drawRoundedRect(r, 6, 6)
             p.setBrush(Qt.NoBrush)
-            p.setPen(QPen(QColor(0, 0, 0, 170), 1.5, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+            p.setPen(QPen(QColor(255, 255, 255, 190), 1.5, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
             c = r.center()
             path = QPainterPath()
             if key == "close":
