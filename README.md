@@ -39,13 +39,24 @@ clicking.
 
 ## What it looks like
 
+Over real VS Code, on a project whose deploy really failed:
+
 | | |
 |---|---|
-| ![Pointer landing on a list item with a caption](docs/images/pointer.png) | ![Step 2 of a guide with the floating step card](docs/images/guide.png) |
-| ![A handwritten glass note, an ink circle, an arrow and a flow diagram](docs/images/notes.png) | ![A spotlight dimming everything but one row](docs/images/spotlight.png) |
+| ![A spotlight and pointer on the failing line in the VS Code terminal](docs/images/real-pointer.png) | ![Step 2 of a guide marking a line in the .env file, with the step card](docs/images/real-guide.png) |
+| ![An ink circle, a glass note, an arrow to the file tree and a flow diagram over the editor](docs/images/real-notes.png) | ![A yellow sticky note the user dragged and added a third line to](docs/images/real-sticky.png) |
 
-These pictures were drawn by the plugin's own drawing code over a staged Settings window
-(`exclude_from_capture` keeps the live overlay out of screenshots by default).
+These are the plugin's own overlay windows and UI Automation lookups running against real VS Code.
+They were captured on a private Windows desktop, with VS Code's window and the overlay's windows
+combined frame by frame, because the live overlay is kept out of normal screenshots by default
+(`exclude_from_capture`). The `.env` item, the file tab and the Terminal menu were found by name
+through UI Automation; the code and terminal lines were given as rectangles.
+
+Drawn over a staged Settings window by the same drawing code:
+
+| | |
+|---|---|
+| ![Pointer landing on a list item with a caption](docs/images/pointer.png) | ![A spotlight dimming everything but one row](docs/images/spotlight.png) |
 
 ## Requirements
 
