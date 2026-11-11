@@ -23,7 +23,7 @@ sys.path[:0] = [str(HERE), str(HERE.parent)]
 import shapes as S  # noqa: E402
 import winapi  # noqa: E402
 
-VERSION = "0.2.1"
+VERSION = "0.3.0"
 log = logging.getLogger("screen-overlay")
 
 
@@ -103,9 +103,14 @@ class Handler:
                 to = int(to.strip())
             to = to - 1 if isinstance(to, int) and not isinstance(to, bool) else to  # steps are 1-based outside
             return self.bridge.call(lambda: self.ref["overlay"].guide_move(to))
+        if op == "sticky":
+            return self.sticky(req)
+        if op == "stickies":
+            return {"ok": True, "stickies": self.bridge.call(lambda: self.ref["overlay"].sticky_list())}
         if op == "clear":
             ids, owner = req.get("ids") or None, req.get("owner") or None
-            return {"ok": True, **self.bridge.call(lambda: self.ref["overlay"].clear(ids, owner))}
+            stickies = req.get("stickies") is True
+            return {"ok": True, **self.bridge.call(lambda: self.ref["overlay"].clear(ids, owner, stickies))}
         if op == "stop":
             self.stop_requested = time.monotonic()
             return {"ok": True, "stopped": True}
@@ -258,6 +263,32 @@ class Handler:
             res["capture_note"] = "Overlay is hidden from screenshots, so your own captures will not show it."
         return res
 
+
+    # ------------------------------------------------------------------ sticky notes
+    def sticky(self, req: dict) -> dict:
+        try:
+            notes = S.normalize_stickies(req.get("notes"))
+            space = S.normalize_space(req.get("space"))
+        except S.ShapeError as exc:
+            return {"ok": False, "error": str(exc)}
+        monitors, virtual = winapi.monitors(), winapi.virtual_screen()
+        if not monitors:
+            return {"ok": False, "error": "no monitor is attached right now"}
+        errors = []
+        for n in notes:
+            n["rect"] = None
+            if n["target"] is None:
+                continue
+            try:
+                n["rect"] = self.resolve(n["target"], space, monitors, virtual)["rect"]
+            except Exception as exc:  # the note still appears, just not beside its target
+                errors.append({"id": n["id"], "error": str(exc)})
+        owner = req.get("owner")
+        out = self.bridge.call(lambda: self.ref["overlay"].sticky_show(notes, owner))
+        if errors and out.get("ok"):
+            out["errors"] = errors
+            out["errors_note"] = "These notes were placed in a free corner because their target was not found."
+        return out
 
     # ------------------------------------------------------------------ guide
     def _pin(self, target: dict | None) -> dict | None:
@@ -434,7 +465,7 @@ def main() -> int:
         if fired.is_set() or (handler.stop_requested and time.monotonic() - handler.stop_requested > 0.3):
             log.info("emergency hotkey or stop: clearing and exiting")
             try:
-                overlay.clear()
+                overlay.clear(stickies=True)
             except Exception:
                 log.exception("clear failed while exiting")
             finally:

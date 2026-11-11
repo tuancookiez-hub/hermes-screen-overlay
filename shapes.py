@@ -26,6 +26,9 @@ MAX_STEPS = 20
 MAX_COORD = 1e6  # far beyond any real screen; keeps hand-drawn strokes from exploding in size
 MAX_STEP_TITLE = 80
 MAX_STEP_TEXT = 300
+MAX_STICKIES = 12
+MAX_STICKY_TEXT = 400
+STICKY_COLOR = "yellow"
 PALETTE = {
     "orange": "#FF9F0A",
     "blue": "#0A84FF",
@@ -203,6 +206,52 @@ def normalize_shapes(raw: Any) -> list[dict]:
             shape.update(_flow(s, where))
         out.append(shape)
     return out
+
+
+def normalize_stickies(raw: Any) -> list[dict]:
+    """Sticky notes to add or update: [{id?, text, title?, color?, target?}]."""
+    if not isinstance(raw, list) or not raw:
+        raise ShapeError("notes must be a non-empty list")
+    if len(raw) > MAX_STICKIES:
+        raise ShapeError(f"at most {MAX_STICKIES} sticky notes")
+    out: list[dict] = []
+    seen: set[str] = set()
+    for i, n in enumerate(raw):
+        where = f"notes[{i}]"
+        if not isinstance(n, dict):
+            raise ShapeError(f"{where} must be an object")
+        text = n.get("text")
+        if not isinstance(text, str) or not text.strip():
+            raise ShapeError(f"{where}: a sticky note needs text")
+        title = n.get("title")
+        if title not in (None, "") and not isinstance(title, str):
+            raise ShapeError(f"{where}.title must be a string")
+        nid = str(n.get("id") or f"sticky{i + 1}")[:40]
+        if nid in seen:
+            raise ShapeError(f"{where}.id {nid!r} is used twice")
+        seen.add(nid)
+        out.append({
+            "id": nid,
+            "text": text.strip()[:MAX_STICKY_TEXT],
+            "title": (title or "").strip()[:MAX_STEP_TITLE],
+            "color": color(n.get("color") or STICKY_COLOR),
+            "target": None if n.get("target") is None else normalize_target(n["target"], f"{where}.target"),
+        })
+    return out
+
+
+def sticky_spot(size: tuple[float, float], target: Rect | None, work: Rect, taken: list, margin: float = 20) -> Rect:
+    """Where a new sticky goes: beside its target when there is room, else a free corner."""
+    w, h = size
+    if target and (target[2] or target[3]):
+        tx, ty, tw, th = target
+        for x, y in ((tx + tw + margin, ty), (tx - margin - w, ty), (tx, ty + th + margin), (tx, ty - margin - h)):
+            r = (x, y, w, h)
+            inside = work[0] <= x and x + w <= work[0] + work[2] and work[1] <= y and y + h <= work[1] + work[3]
+            if inside and not any(intersects(r, tuple(t)) for t in taken):
+                return r
+    avoid = list(taken) + ([inflate(target, margin)] if target else [])
+    return place_free(size, work, avoid, margin)
 
 
 def _flow(s: dict, where: str) -> dict:

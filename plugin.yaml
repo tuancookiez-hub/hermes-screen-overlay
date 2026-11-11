@@ -1,11 +1,12 @@
 name: screen-overlay
-version: 0.2.1
+version: 0.3.0
 manifest_version: 2
 description: >-
-  Hermes points at things on your real Windows screen: a gliding pointer, spotlights, boxes, arrows
-  and numbered steps anchored to live UI Automation elements, a floating step guide, and handwritten
-  glass notes. Never takes focus, DPI- and multi-monitor-aware, with an emergency clear hotkey
-  (Ctrl+Alt+Shift+F12).
+  Gives Hermes the ability to draw on your screen. On your real Windows desktop it draws a gliding
+  pointer, spotlights, boxes, arrows and numbered steps anchored to live UI Automation elements, a
+  floating step guide, handwritten glass notes, and sticky notes you can drag and edit. Never takes
+  focus unless you choose to edit a sticky note, DPI- and multi-monitor-aware, with an emergency clear
+  hotkey (Ctrl+Alt+Shift+F12).
 author: tuancookiez
 license: MIT
 requires_hermes: ">=0.22.0"

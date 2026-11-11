@@ -17,6 +17,7 @@ from PySide6.QtWidgets import QWidget
 import shapes as S
 import winapi
 from panel import Panel
+from sticky import Sticky
 
 log = logging.getLogger("screen-overlay.render")
 
@@ -548,6 +549,7 @@ class Overlay:
         self.guide_result: dict | None = None  # how the last guide ended, for status
         self.on_guide_change = lambda: None  # set by the daemon: wakes the anchor thread
         self.panel: Panel | None = None
+        self.stickies: dict[str, Sticky] = {}  # sticky notes, kept apart from the click-through marks
         self.animate = True
         self._anim: QVariantAnimation | None = None
         self._frame_at = 0.0
@@ -605,6 +607,9 @@ class Overlay:
             winapi.place_topmost(self.panel.hwnd())  # above the layers, which pass clicks through anyway
 
     def _tick(self) -> None:
+        for st in self.stickies.values():  # stay above windows that grabbed TOPMOST after us
+            if not st.editing:
+                winapi.place_topmost(st.hwnd())
         if not self.items and not self.guide:
             return
         before = [(m["device"], tuple(m["rect"]), m["dpi"]) for m in self.monitors]
@@ -735,7 +740,20 @@ class Overlay:
         self._fade_in()
         return {"shapes": [e for e in self.summary if e["id"] in ids]}
 
-    def clear(self, ids: list[str] | None = None, owner: str | None = None) -> dict:
+    def clear(self, ids: list[str] | None = None, owner: str | None = None, stickies: bool = False) -> dict:
+        """Marks go. Sticky notes only go when named in `ids` or when `stickies` is set: the user may
+        have written in them, so a routine clear (or a session ending) leaves them alone."""
+        gone = [k for k in self.stickies if (ids and k in ids) or (stickies and not ids)]
+        for k in gone:
+            self._drop_sticky(k)
+        if ids and gone and not any(it["id"] in ids for it in self.items):
+            return {"cleared": 0, "remaining": len(self.items), "stickies_removed": len(gone)}
+        out = self._clear_marks(ids, owner)
+        if gone:
+            out["stickies_removed"] = len(gone)
+        return out
+
+    def _clear_marks(self, ids: list[str] | None, owner: str | None) -> dict:
         had_guide = bool(self.guide)
         if self.guide and not ids and (owner is None or self.guide["owner"] == owner):
             self._drop_guide("cleared")
@@ -922,7 +940,8 @@ class Overlay:
             panel = {"hwnd": self.panel.hwnd(), "rect": winapi.window_rect(self.panel.hwnd())}
         return {"visible_shapes": [{"id": e["id"], "type": e["type"], "monitor": e["monitor"],
                                     "rect": e["target_rect"]} for e in self.summary],
-                "guide": self.guide_status(), "panel": panel, "expires_in_s": left, "monitors": self.monitors or winapi.monitors(),
+                "guide": self.guide_status(), "panel": panel, "stickies": self.sticky_list(),
+                "expires_in_s": left, "monitors": self.monitors or winapi.monitors(),
                 "layers": [{"device": l.mon["device"], "dpr": l.dpr, "hwnd": l.hwnd(),
                             "window_rect": winapi.window_rect(l.hwnd())} for l in self.layers if l.isVisible()],
                 "settings": self.settings}
@@ -932,7 +951,59 @@ class Overlay:
         return used or {m["index"] for m in self.monitors if m["primary"]}
 
     def idle_seconds(self) -> float:
-        return 0 if self.items or self.guide else time.monotonic() - self.last_activity
+        return 0 if self.items or self.guide or self.stickies else time.monotonic() - self.last_activity
+
+    # ------------------------------------------------------------------ sticky notes
+    def sticky_show(self, notes: list[dict], owner: str | None) -> dict:
+        """Add notes, or update the ones whose id already exists. `rect` is the resolved target or None."""
+        self.last_activity = time.monotonic()
+        mons = self.monitors or winapi.monitors()
+        if not mons:
+            return {"ok": False, "error": "no monitor is attached right now"}
+        wanted = {n["id"] for n in notes}
+        if len(set(self.stickies) | wanted) > S.MAX_STICKIES:
+            return {"ok": False, "error": f"at most {S.MAX_STICKIES} sticky notes on screen; clear some first"}
+        excl = bool(self.settings.get("exclude_from_capture", True))
+        for n in notes:
+            st = self.stickies.get(n["id"])
+            data = {"id": n["id"], "text": n["text"], "title": n["title"], "color": n["color"], "edited": False,
+                    "owner": owner}
+            if st:
+                data["title"] = data["title"] or st.d.get("title") or ""  # a rewrite keeps its heading
+                st.set_data(**data)
+                continue
+            st = Sticky(data, self._sticky_changed, self._drop_sticky)
+            self.stickies[n["id"]] = st
+            rect = tuple(n["rect"]) if n.get("rect") else None
+            mon = S.monitor_for(rect, mons) if rect else S.free_monitor(mons, winapi.cursor_pos(),
+                                                                         winapi.foreground_rect())
+            s = mon["scale"]
+            size = (st.width() * s, st.height() * s)
+            taken = [winapi.window_rect(o.hwnd()) for o in self.stickies.values() if o is not st and o.isVisible()]
+            if self.panel and self.panel.isVisible():
+                taken.append(winapi.window_rect(self.panel.hwnd()))
+            spot = S.sticky_spot(size, rect, tuple(mon["work"]), taken, 20 * s)
+            st.show()
+            winapi.exclude_from_capture(st.hwnd(), excl)
+            winapi.place_topmost(st.hwnd(), [round(v) for v in spot])
+        return {"ok": True, "stickies": [e for e in self.sticky_list() if e["id"] in wanted]}
+
+    def sticky_list(self) -> list[dict]:
+        return [{"id": k, "title": st.d.get("title") or "", "text": st.d["text"],
+                 "edited_by_user": bool(st.d.get("edited")), "moved_by_user": st.moved, "editing_now": st.editing,
+                 "rect": winapi.window_rect(st.hwnd())} for k, st in self.stickies.items()]
+
+    def _sticky_changed(self, _nid: str) -> None:
+        self.last_activity = time.monotonic()
+
+    def _drop_sticky(self, nid: str) -> None:
+        st = self.stickies.pop(nid, None)
+        if st:
+            if st.editing:
+                st.end_edit(commit=False)
+            st.hide()
+            st.deleteLater()
+            self.last_activity = time.monotonic()
 
     def _fade_in(self) -> None:
         if self._anim:

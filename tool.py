@@ -9,7 +9,7 @@ from typing import Any, Callable
 
 from . import client
 from .shapes import (GUIDE_MARKS, INK_MARKS, PALETTE, PLACEMENTS, SHAPE_TYPES, ShapeError, guide_slug, normalize_guide,
-                     normalize_shapes, normalize_space)
+                     normalize_shapes, normalize_space, normalize_stickies)
 
 log = logging.getLogger(__name__)
 
@@ -44,18 +44,20 @@ SCHEMA: dict[str, Any] = {
         "Draw on the user's real Windows screen to show them where to look or click, and teach with it: "
         "spotlight, box, arrow, label, numbered step, a drawn pointer that glides to a target, handwritten "
         "glass notes, ink marks and small flow diagrams. A guide is a floating panel that walks the user "
-        "through steps with Next and Back. Marks are click-through and nothing ever takes keyboard focus; "
-        "marks clear after ttl_seconds, and the user can clear everything with Ctrl+Alt+Shift+F12. "
+        "through steps with Next and Back. A sticky is a paper note the user can drag and edit (double-click) "
+        "and that stays until closed; read their edits back with `stickies`. Marks are click-through and "
+        "nothing takes keyboard focus unless the user chooses to edit a sticky; marks clear after "
+        "ttl_seconds, and the user can clear everything with Ctrl+Alt+Shift+F12. "
         "Prefer element targets (UI Automation, pixel-exact, survives DPI scaling) over coordinates: call "
         "inspect what='find' first when unsure of the name. Use `space` only for coordinates read off a "
         "screenshot. Actions: inspect (screens | windows | element_at | find), show, guide, guide_move, "
-        "guides, clear, status, stop. Load skill 'screen-overlay:screen-overlay' for worked examples."
+        "guides, sticky, stickies, clear, status, stop. Load skill 'screen-overlay:screen-overlay' for worked examples."
     ),
     "parameters": {
         "type": "object",
         "properties": {
-            "action": {"type": "string", "enum": ["inspect", "show", "guide", "guide_move", "guides", "clear",
-                                                  "status", "stop"]},
+            "action": {"type": "string", "enum": ["inspect", "show", "guide", "guide_move", "guides", "sticky",
+                                                  "stickies", "clear", "status", "stop"]},
             "what": {"type": "string", "enum": ["screens", "windows", "element_at", "find"],
                      "description": "inspect only"},
             "window": {"type": ["string", "integer"],
@@ -93,6 +95,24 @@ SCHEMA: dict[str, Any] = {
                     "required": ["type"],
                 },
             },
+            "notes": {
+                "type": "array",
+                "description": ("sticky: paper notes to leave on screen (max 12). The user can drag them and "
+                                "double-click to edit. Reusing an id rewrites that note in place."),
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "text": {"type": "string", "description": "The note, up to 400 chars"},
+                        "title": {"type": "string", "description": "Short heading on the note's top strip"},
+                        "color": {"type": "string", "description": f"Paper tint: {', '.join(PALETTE)} or #RRGGBB "
+                                                                   "(default yellow)"},
+                        "target": TARGET,
+                        "id": {"type": "string", "description": "Name it to rewrite or clear it later"},
+                    },
+                    "required": ["text"],
+                },
+            },
+            "stickies": {"type": "boolean", "description": "clear: also remove every sticky note (default false)"},
             "steps": {
                 "type": "array",
                 "description": "guide: up to 20 steps, shown one at a time",
@@ -127,7 +147,8 @@ SCHEMA: dict[str, Any] = {
             "replace": {"type": "boolean", "description": "show: clear existing marks first (default true)"},
             "ttl_seconds": {"type": "number", "description": ("show: auto-clear after this long; 0 = never. guide: "
                                                               "end after this long with no Next or Back (default 30 min)")},
-            "ids": {"type": "array", "items": {"type": "string"}, "description": "clear: only these ids"},
+            "ids": {"type": "array", "items": {"type": "string"},
+                    "description": "clear: only these ids (mark ids or sticky note ids)"},
         },
         "required": ["action"],
     },
@@ -211,13 +232,22 @@ def make_handler(get_settings: Callable[[], dict]):
                 if args.get("delete"):
                     return _ok({"ok": True, "deleted": client.delete_guide(guide_slug(args["delete"]))})
                 return _ok({"ok": True, "guides": client.list_guides()})
+            if action == "sticky":
+                normalize_stickies(args.get("notes"))  # fail fast, before starting anything
+                normalize_space(args.get("space"))
+                return _ok(client.call({"op": "sticky", "notes": args["notes"], "space": args.get("space"),
+                                        "owner": kw.get("session_id") or None}, settings))
+            if action == "stickies":
+                return _ok(client.call({"op": "stickies"}, settings, start=False))
             if action == "clear":
-                return _ok(client.call({"op": "clear", "ids": args.get("ids")}, settings, start=False))
+                return _ok(client.call({"op": "clear", "ids": args.get("ids"),
+                                        "stickies": args.get("stickies") is True}, settings, start=False))
             if action == "status":
                 return _ok(client.call({"op": "status"}, settings, start=False))
             if action == "stop":
                 return _ok(client.call({"op": "stop"}, settings, start=False))
-            return _err("action must be one of inspect, show, guide, guide_move, guides, clear, status, stop")
+            return _err("action must be one of inspect, show, guide, guide_move, guides, sticky, stickies, clear, "
+                        "status, stop")
         except ShapeError as exc:
             return _err(str(exc))
         except client.OverlayUnavailable as exc:

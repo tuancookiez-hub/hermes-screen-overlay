@@ -44,6 +44,7 @@ user32.GetWindowThreadProcessId.argtypes = [HWND, ctypes.POINTER(wintypes.DWORD)
 user32.IsWindowVisible.argtypes = [HWND]
 user32.IsIconic.argtypes = [HWND]
 user32.IsWindow.argtypes = [HWND]
+user32.SetForegroundWindow.argtypes = [HWND]
 user32.GetForegroundWindow.restype = HWND
 user32.GetAncestor.restype = HWND
 user32.GetAncestor.argtypes = [HWND, ctypes.c_uint]
@@ -233,6 +234,18 @@ def make_no_activate(hwnd: int) -> None:
     """Takes clicks, but Windows never gives it focus or the foreground."""
     ex = user32.GetWindowLongPtrW(hwnd, GWL_EXSTYLE)
     user32.SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE)
+
+
+def set_no_activate(hwnd: int, on: bool) -> None:
+    """Turn the never-activate style on or off (a sticky note turns it off only while being edited)."""
+    ex = user32.GetWindowLongPtrW(hwnd, GWL_EXSTYLE)
+    ex = (ex | WS_EX_NOACTIVATE) if on else (ex & ~WS_EX_NOACTIVATE)
+    user32.SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex | WS_EX_TOOLWINDOW)
+
+
+def activate(hwnd: int) -> bool:
+    """Bring a window to the foreground. Only used right after the user clicked to edit a note."""
+    return bool(user32.SetForegroundWindow(hwnd))
 
 
 def cursor_pos() -> tuple[int, int]:

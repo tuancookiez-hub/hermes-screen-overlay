@@ -120,3 +120,30 @@ def test_guide_slug_avoids_windows_device_names():
 def test_stroke_point_count_is_bounded():
     assert len(S.wobble_line((0, 0), (1e6, 0), 1, 2.0)) <= 801
     assert len(S.ink_strokes("circle", (0, 0, 1e6, 1e6), 1, 1.0)[0]) <= 801
+
+
+def test_sticky_notes_are_validated():
+    out = S.normalize_stickies([{"text": "  buy milk  "}, {"text": "x", "title": "T", "color": "blue", "id": "a",
+                                                           "target": {"point": [5, 6]}}])
+    assert out[0] == {"id": "sticky1", "text": "buy milk", "title": "", "color": S.PALETTE["yellow"], "target": None}
+    assert out[1]["id"] == "a" and out[1]["color"] == S.PALETTE["blue"] and out[1]["target"] == {"point": [5.0, 6.0]}
+    assert len(S.normalize_stickies([{"text": "y" * 5000}])[0]["text"]) == S.MAX_STICKY_TEXT
+    for bad in (None, [], "x", [1], [{}], [{"text": "   "}], [{"text": 5}], [{"text": "a", "title": 3}],
+                [{"text": "a", "color": "nope"}], [{"text": "a", "id": "d"}, {"text": "b", "id": "d"}],
+                [{"text": "a", "target": {"rect": [0, 0, float("inf"), 1]}}],
+                [{"text": "a"}] * (S.MAX_STICKIES + 1)):
+        with pytest.raises(S.ShapeError):
+            S.normalize_stickies(bad)
+
+
+def test_sticky_spot_sits_beside_its_target_or_in_a_free_corner():
+    work = (0, 0, 1000, 800)
+    assert S.sticky_spot((200, 100), (100, 100, 50, 20), work, []) == (170, 100, 200, 100)  # right of it
+    assert S.sticky_spot((200, 100), (850, 100, 100, 20), work, []) == (630, 100, 200, 100)  # no room: left
+    first = S.sticky_spot((200, 100), None, work, [])
+    second = S.sticky_spot((200, 100), None, work, [first])
+    assert first != second and not S.intersects(first, second)
+    for r in (first, second, S.sticky_spot((200, 100), (100, 100, 50, 20), work, [(170, 100, 200, 100)])):
+        assert 0 <= r[0] and r[0] + r[2] <= 1000 and 0 <= r[1] and r[1] + r[3] <= 800
+    busy = S.sticky_spot((200, 100), (400, 300, 50, 20), work, [(470, 300, 200, 100)])
+    assert not S.intersects(busy, (470, 300, 200, 100))

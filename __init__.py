@@ -1,4 +1,4 @@
-"""screen-overlay: Hermes points at things on your real Windows screen and walks you through them."""
+"""screen-overlay: gives Hermes the ability to draw on your real Windows screen."""
 from __future__ import annotations
 
 import json

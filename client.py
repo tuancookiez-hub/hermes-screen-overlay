@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 PLUGIN_NAME = "screen-overlay"
-DAEMON_VERSION = "0.2.1"  # must match daemon/main.py; an older running daemon is replaced
+DAEMON_VERSION = "0.3.0"  # must match daemon/main.py; an older running daemon is replaced
 DAEMON = Path(__file__).resolve().parent / "daemon" / "main.py"
 START_TIMEOUT_S = 20.0
 CREATE_NO_WINDOW = 0x08000000
