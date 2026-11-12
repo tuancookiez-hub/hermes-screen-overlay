@@ -76,3 +76,23 @@ def test_call_restarts_daemon_that_exited_between_calls(monkeypatch):
     calls.clear()
     monkeypatch.setattr(C, "running", lambda: {"ok": True})
     assert C.call({"op": "x"}, {}, start=False)["running"] is False
+
+
+def test_daemon_env_passes_no_secrets():
+    """The overlay process must never inherit Hermes's provider keys or tokens."""
+    base = {"Path": r"C:\Windows", "SystemRoot": r"C:\Windows", "TEMP": "t", "TMP": "t", "USERNAME": "u",
+            "USERPROFILE": "p", "LOCALAPPDATA": "l", "APPDATA": "a", "windir": r"C:\Windows", "SYSTEMDRIVE": "C:",
+            "OPENAI_API_KEY": "sk-x", "ANTHROPIC_API_KEY": "sk-y", "OPENROUTER_API_KEY": "z", "FISH_API_KEY": "f",
+            "GITHUB_TOKEN": "g", "HERMES_HOME": "h", "AWS_SECRET_ACCESS_KEY": "s", "DATABASE_URL": "d",
+            "PYTHONHOME": "bad", "QT_QPA_PLATFORM": "offscreen", "SOMETHING_ELSE": "1"}
+    env = C.daemon_env(base, [])
+    assert set(k.upper() for k in env) == set(C.DAEMON_ENV_ALLOW) | {"PYTHONPATH"}
+    assert env["Path"] == r"C:\Windows" and env["SystemRoot"] == r"C:\Windows"  # names keep their own case
+    assert not any(any(w in k.upper() for w in ("KEY", "TOKEN", "SECRET", "HERMES", "URL")) for k in env)
+
+
+def test_daemon_env_uses_the_real_environment_by_default(monkeypatch):
+    monkeypatch.setenv("OVERLAY_TEST_SECRET_KEY", "nope")
+    env = C.daemon_env()
+    assert "OVERLAY_TEST_SECRET_KEY" not in env
+    assert all(k.upper() in C.DAEMON_ENV_ALLOW or k == "PYTHONPATH" for k in env)

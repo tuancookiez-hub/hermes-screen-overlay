@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 PLUGIN_NAME = "screen-overlay"
-DAEMON_VERSION = "0.3.2"  # must match daemon/main.py; an older running daemon is replaced
+DAEMON_VERSION = "0.3.3"  # must match daemon/main.py; an older running daemon is replaced
 DAEMON = Path(__file__).resolve().parent / "daemon" / "main.py"
 START_TIMEOUT_S = 20.0
 CREATE_NO_WINDOW = 0x08000000
@@ -90,13 +90,20 @@ def _python() -> str:
     raise OverlayUnavailable(f"cannot find a Python interpreter next to {exe}")
 
 
+# The only variables the overlay process is given. Hermes's own environment holds provider keys and
+# other secrets; the overlay draws on the screen and needs none of them.
+DAEMON_ENV_ALLOW = ("SYSTEMROOT", "SYSTEMDRIVE", "WINDIR", "TEMP", "TMP", "USERNAME", "USERPROFILE", "LOCALAPPDATA",
+                    "APPDATA", "PATH")
+
+
 def daemon_env(base: dict | None = None, paths: list | None = None) -> dict:
-    """Environment for the daemon. Hermes puts its dependency environment on sys.path at startup and
-    clears PYTHONPATH, so a child interpreter would not find PySide6 unless we hand the path on."""
-    env = dict(os.environ if base is None else base)
-    for k in ("QT_SCALE_FACTOR", "QT_SCREEN_SCALE_FACTORS", "QT_QPA_PLATFORM", "QT_ENABLE_HIGHDPI_SCALING",
-              "PYTHONHOME", "VIRTUAL_ENV"):
-        env.pop(k, None)
+    """Environment for the daemon: a short allowlist of Windows basics, plus PYTHONPATH.
+
+    Nothing else is passed on, so no API key or token Hermes has loaded reaches the overlay process.
+    Hermes puts its dependency environment on sys.path at startup and clears PYTHONPATH, so a child
+    interpreter would not find PySide6 unless we hand the path on."""
+    src = os.environ if base is None else base
+    env = {k: v for k, v in src.items() if k.upper() in DAEMON_ENV_ALLOW}
     real = [str(p) for p in (sys.path if paths is None else paths) if p and os.path.isdir(p)]
     env["PYTHONPATH"] = os.pathsep.join(dict.fromkeys(real))
     return env

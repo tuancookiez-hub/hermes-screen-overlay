@@ -1,5 +1,5 @@
 name: screen-overlay
-version: 0.3.2
+version: 0.3.3
 manifest_version: 2
 description: >-
   Gives Hermes the ability to draw on your screen. On your real Windows desktop it draws a gliding

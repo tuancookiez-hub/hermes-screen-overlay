@@ -139,6 +139,9 @@ Settings are under Desktop → Settings → Plugins → screen-overlay, or `plug
   calls `stop`, or after `idle_exit_minutes` with nothing on screen (an open sticky note counts as
   something on screen, so the process stays up while one is open). Only one runs per Hermes profile,
   enforced by a named mutex.
+- **Environment.** The overlay process does not inherit Hermes's environment. It is started with a
+  short allowlist (`SYSTEMROOT`, `SYSTEMDRIVE`, `WINDIR`, `TEMP`, `TMP`, `USERNAME`, `USERPROFILE`,
+  `LOCALAPPDATA`, `APPDATA`, `PATH`) plus `PYTHONPATH`, so no API key or token reaches it.
 - **Network.** None. Hermes and the daemon talk over a local Windows named pipe,
   `\\.\pipe\hermes-screen-overlay-<hash>`, authenticated with a random key.
 - **What it reads.** Monitor layout, and titles, process names and bounds of visible top-level windows.

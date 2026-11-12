@@ -23,7 +23,7 @@ sys.path[:0] = [str(HERE), str(HERE.parent)]
 import shapes as S  # noqa: E402
 import winapi  # noqa: E402
 
-VERSION = "0.3.2"
+VERSION = "0.3.3"
 log = logging.getLogger("screen-overlay")
 
 
